@@ -1023,7 +1023,14 @@ require('lazy').setup({
     },
   },
 })
+
+-- Add neotree toggle to view files
 vim.keymap.set('n', '<leader>e', '<Cmd>Neotree toggle<CR>')
+
+-- Add keymap for Telescope live grep (file search)
+vim.keymap.set('n', '<leader>fg', function()
+  require('telescope.builtin').live_grep()
+end, { desc = 'Telescope live grep' })
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
