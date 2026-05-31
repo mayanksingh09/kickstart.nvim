@@ -206,6 +206,57 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   end,
 })
 
+-- Treesitter-based folding for JSON (display-only: collapses objects/arrays,
+-- never modifies the buffer). Files open fully expanded; use zc/zo/za to fold.
+vim.api.nvim_create_autocmd('FileType', {
+  desc = 'Enable treesitter folding for JSON',
+  group = vim.api.nvim_create_augroup('kickstart-json-fold', { clear = true }),
+  pattern = { 'json', 'jsonc' },
+  callback = function(ev)
+    vim.opt_local.foldmethod = 'expr'
+    vim.opt_local.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+    vim.opt_local.foldlevel = 99 -- start with everything unfolded
+    -- <leader>jq pre-fills the command line with ':%!jq ' (no <CR>) so you can
+    -- type a filter and run it yourself. Reflows the buffer in place when you
+    -- hit Enter (file on disk unchanged until :w; undo with u).
+    vim.keymap.set('n', '<leader>jq', ':%!jq ', { buffer = ev.buf, desc = 'Filter JSON buffer through jq' })
+  end,
+})
+
+-- JSONL (.jsonl): nvim sets filetype=jsonl, for which there is no treesitter
+-- parser. Point the `json` grammar at the buffer to get syntax highlighting.
+-- Records are one-per-line/compact, so treesitter folding is not useful here;
+-- instead, <leader>jp pretty-prints the record under the cursor in a scratch
+-- split via jq (read-only — the .jsonl buffer is never modified).
+vim.api.nvim_create_autocmd('FileType', {
+  desc = 'Highlight JSONL with the json grammar + record pretty-printer',
+  group = vim.api.nvim_create_augroup('kickstart-jsonl', { clear = true }),
+  pattern = 'jsonl',
+  callback = function(ev)
+    pcall(vim.treesitter.start, ev.buf, 'json')
+    -- Same jq filter prompt as json/jsonc. NOTE: `:%!jq .` reflows the whole
+    -- file into pretty multi-line output, which is no longer valid one-record-
+    -- per-line JSONL — use `jq -c .` to keep it compact, or <leader>jp for a
+    -- single record. Mapping is prefilled (no <CR>) so you choose the filter.
+    vim.keymap.set('n', '<leader>jq', ':%!jq ', { buffer = ev.buf, desc = 'Filter JSONL buffer through jq' })
+    vim.keymap.set('n', '<leader>jp', function()
+      local line = vim.api.nvim_get_current_line()
+      local out = vim.fn.systemlist({ 'jq', '.' }, line)
+      if vim.v.shell_error ~= 0 then
+        vim.notify(table.concat(out, '\n'), vim.log.levels.ERROR)
+        return
+      end
+      vim.cmd 'botright new'
+      local buf = vim.api.nvim_get_current_buf()
+      vim.bo[buf].buftype = 'nofile'
+      vim.bo[buf].bufhidden = 'wipe'
+      vim.bo[buf].swapfile = false
+      vim.api.nvim_buf_set_lines(buf, 0, -1, false, out)
+      vim.bo[buf].filetype = 'json'
+    end, { buffer = ev.buf, desc = 'Pretty-print JSONL record under cursor' })
+  end,
+})
+
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    See `:help lazy.nvim.txt` or https://github.com/folke/lazy.nvim for more info
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
@@ -675,6 +726,13 @@ require('lazy').setup({
         -- ts_ls = {},
         --
 
+        -- Python: basedpyright (maintained pyright fork) provides go-to-definition
+        -- (`gd`), hover, completion, and diagnostics. Mason installs it via the
+        -- `ensure_installed` list built from this table below. Without a Python
+        -- LSP, no client attaches to `.py` buffers, so the buffer-local LSP keymaps
+        -- defined in the `LspAttach` autocmd above (including `gd`) are never set.
+        basedpyright = {},
+
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -952,19 +1010,45 @@ require('lazy').setup({
   },
   { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
-    branch = 'master',
-    build = ':TSUpdate',
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
+    --
+    -- NOTE: the `master` branch does NOT support Neovim 0.12+. Its injection
+    -- directives crash on 0.12's changed query-match API -- e.g. the
+    -- `set-lang-from-info-string!` error thrown on every markdown code fence.
+    -- The rewritten `main` branch is the supported branch for 0.12 and has a
+    -- different API:
+    --   * parsers are installed via `require('nvim-treesitter').install{...}`
+    --     (replaces `ensure_installed` + `auto_install`), into stdpath('data')/site;
+    --   * highlight/indent are core `vim.treesitter.*` features enabled per
+    --     buffer in a FileType autocmd (the old `highlight`/`indent` modules
+    --     no longer exist).
+    branch = 'main',
+    lazy = false,
+    build = ':TSUpdate',
     config = function()
-      require('nvim-treesitter.configs').setup {
-        ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
-        auto_install = true,
-        highlight = {
-          enable = true,
-          additional_vim_regex_highlighting = { 'ruby' },
-        },
-        indent = { enable = true, disable = { 'ruby' } },
+      local parsers = {
+        'bash', 'c', 'diff', 'html', 'json', 'lua', 'luadoc',
+        'markdown', 'markdown_inline', 'python', 'query', 'toml', 'vim',
+        'vimdoc', 'yaml',
       }
+      require('nvim-treesitter').install(parsers)
+
+      -- `main` has no separate `jsonc` parser; the `json` grammar parses jsonc
+      -- fine, so map the jsonc filetype onto it (keeps `.jsonc` highlighted).
+      vim.treesitter.language.register('json', 'jsonc')
+
+      -- Enable treesitter highlighting + indentation for any buffer whose
+      -- filetype maps to an installed parser (e.g. sh -> bash). pcall guards the
+      -- first launch, when a parser may still be installing asynchronously.
+      vim.api.nvim_create_autocmd('FileType', {
+        group = vim.api.nvim_create_augroup('kickstart-treesitter', { clear = true }),
+        callback = function(ev)
+          local lang = vim.treesitter.language.get_lang(ev.match)
+          if lang and pcall(vim.treesitter.start, ev.buf, lang) then
+            vim.bo[ev.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+          end
+        end,
+      })
     end,
     -- There are additional nvim-treesitter modules that you can use to interact
     -- with nvim-treesitter. You should go explore a few and see what interests you:
