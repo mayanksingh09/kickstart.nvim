@@ -978,14 +978,6 @@ require('lazy').setup({
     lazy = false,
     build = ':TSUpdate',
     branch = 'main',
-    -- PIN: nvim-treesitter dropped Neovim 0.11 support in c82bf96f
-    -- ("feat!: drop support for Nvim 0.11", 2026-04-01). Later commits call
-    -- `vim.list.unique()`, a 0.12-only API, so on 0.11.x every parser install
-    -- dies with "attempt to index field 'list' (a nil value)" at
-    -- config.lua:171 -- silently, leaving buffers with no highlighting.
-    -- 90cd6580 is the last commit that still supports 0.11.
-    -- Remove this pin once Neovim is upgraded to 0.12+.
-    commit = '90cd6580e720caedacb91fdd587b747a6e77d61f',
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter-intro`
     --
     -- NOTE: the `master` branch does NOT support Neovim 0.12+. Its injection
