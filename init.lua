@@ -691,6 +691,14 @@ require('lazy').setup({
         -- defined in the `LspAttach` autocmd above (including `gd`) are never set.
         basedpyright = {},
 
+        -- TypeScript/JavaScript: same reasoning as basedpyright above -- without
+        -- a server here nothing attaches to .ts/.tsx buffers, so `gd` and friends
+        -- silently do nothing even though treesitter highlighting still works.
+        -- Uses the typescript-language-server Mason package. `vtsls` is the
+        -- alternative and handles large monorepos with project references better,
+        -- if this ever feels slow on apps/web.
+        ts_ls = {},
+
         stylua = {}, -- Used to format Lua code
 
         -- Special Lua Config, as recommended by neovim help docs
