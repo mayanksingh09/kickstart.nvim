@@ -502,6 +502,13 @@ require('lazy').setup({
           -- To jump back, press <C-t>.
           vim.keymap.set('n', 'grd', builtin.lsp_definitions, { buffer = buf, desc = '[G]oto [D]efinition' })
 
+          -- Personalization: keep the pre-0.11 `gd`/`gI` bindings as aliases for
+          -- muscle memory. Deliberately NOT aliasing bare `gr` -- it is the prefix
+          -- for grd/grr/gri/grn/gra, so mapping it alone would make every one of
+          -- those wait out `timeoutlen` before resolving.
+          vim.keymap.set('n', 'gd', builtin.lsp_definitions, { buffer = buf, desc = '[G]oto [D]efinition' })
+          vim.keymap.set('n', 'gI', builtin.lsp_implementations, { buffer = buf, desc = '[G]oto [I]mplementation' })
+
           -- Fuzzy find all the symbols in your current document.
           -- Symbols are things like variables, functions, types, etc.
           vim.keymap.set('n', 'gO', builtin.lsp_document_symbols, { buffer = buf, desc = 'Open Document Symbols' })
