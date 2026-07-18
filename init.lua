@@ -694,10 +694,9 @@ require('lazy').setup({
         -- TypeScript/JavaScript: same reasoning as basedpyright above -- without
         -- a server here nothing attaches to .ts/.tsx buffers, so `gd` and friends
         -- silently do nothing even though treesitter highlighting still works.
-        -- Uses the typescript-language-server Mason package. `vtsls` is the
-        -- alternative and handles large monorepos with project references better,
-        -- if this ever feels slow on apps/web.
-        ts_ls = {},
+        -- Using vtsls over ts_ls: it wraps the same tsserver but handles large
+        -- monorepos with project references better.
+        vtsls = {},
 
         stylua = {}, -- Used to format Lua code
 
