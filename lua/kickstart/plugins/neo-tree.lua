@@ -1,6 +1,8 @@
 -- Neo-tree is a Neovim plugin to browse the file system
 -- https://github.com/nvim-neo-tree/neo-tree.nvim
 
+---@module 'lazy'
+---@type LazySpec
 return {
   'nvim-neo-tree/neo-tree.nvim',
   version = '*',
@@ -9,10 +11,12 @@ return {
     'nvim-tree/nvim-web-devicons', -- not strictly required, but recommended
     'MunifTanjim/nui.nvim',
   },
-  cmd = 'Neotree',
+  lazy = false,
   keys = {
     { '\\', ':Neotree reveal<CR>', desc = 'NeoTree reveal', silent = true },
   },
+  -- NOTE: kept as `config` rather than upstream's `opts` — the custom
+  -- cross-instance clipboard commands below close over `clipboard_path`.
   config = function()
     -- Shared clipboard file so file yank/paste works across Neovim instances
     local clipboard_path = vim.fn.stdpath('data') .. '/neo-tree-clipboard.json'
