@@ -29,6 +29,20 @@ return {
           },
         },
         commands = {
+          -- Neo-tree keeps one state per tabpage, but its buffer-local mappings
+          -- live on the (global) neo-tree buffer. So when that buffer is shown
+          -- in a tab where the tree was never rendered, `state.tree` is still
+          -- nil and upstream's `common/commands.lua` indexes it unguarded:
+          --   E5108: attempt to index local 'tree' (a nil value)
+          -- Render the tree for this tab instead of erroring.
+          toggle_node = function(state)
+            if not state.tree then
+              require('neo-tree.sources.manager').navigate(state)
+              return
+            end
+            local fs = require('neo-tree.sources.filesystem')
+            require('neo-tree.sources.common.commands').toggle_node(state, require('neo-tree.utils').wrap(fs.toggle_directory, state))
+          end,
           copy_to_clipboard = function(state)
             local node = state.tree:get_node()
             local filepath = node:get_id()
