@@ -1125,3 +1125,13 @@ vim.keymap.set('n', '<leader>e', '<Cmd>Neotree toggle<CR>')
 vim.opt.clipboard:append 'unnamed'
 vim.keymap.set({ 'n', 'v' }, 'y', '"+y')
 vim.keymap.set({ 'n', 'v' }, 'p', '"+p')
+
+-- Copy the current file's path to the system clipboard
+vim.keymap.set('n', '<leader>yp', function()
+  vim.fn.setreg('+', vim.fn.expand '%:p')
+  vim.notify('Copied absolute path: ' .. vim.fn.expand '%:p')
+end, { desc = '[Y]ank absolute file [P]ath' })
+vim.keymap.set('n', '<leader>yr', function()
+  vim.fn.setreg('+', vim.fn.expand '%')
+  vim.notify('Copied relative path: ' .. vim.fn.expand '%')
+end, { desc = '[Y]ank [R]elative file path' })
